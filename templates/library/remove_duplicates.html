@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Remove duplicates" %} — {{ site_settings.site_name }}{% endblock %}
+
+{% block content %}
+<h1 class="h4 mb-3">{% translate "Remove duplicate files" %}</h1>
+
+<p class="text-body-secondary">
+  {% translate "Only exact duplicates — files whose audio is byte-for-byte identical (same SHA-256) — are ever removed here. The oldest copy of each is always kept; only the newer copies are deleted. Tracks that merely share a title and artist but have different audio (a remaster, a live version, ...) are never touched." %}
+</p>
+
+{% if groups %}
+<div class="alert alert-warning">
+  <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+  {% blocktranslate count count=total_to_remove %}
+    This will permanently delete {{ count }} file from disk ({{ total_bytes_display }}). This cannot be undone.
+  {% plural %}
+    This will permanently delete {{ count }} files from disk ({{ total_bytes_display }}). This cannot be undone.
+  {% endblocktranslate %}
+</div>
+
+<div class="table-responsive mb-3">
+  <table class="table table-sm align-middle">
+    <thead>
+      <tr>
+        <th>{% translate "Title" %}</th>
+        <th>{% translate "Artist" %}</th>
+        <th>{% translate "Kept copy" %}</th>
+        <th>{% translate "Copies to remove" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for group in groups %}
+      {% with keep=group.0 %}
+      <tr>
+        <td>{{ keep.title|default:keep.filename }}</td>
+        <td>{{ keep.artist|default:"—" }}</td>
+        <td class="text-body-secondary small">{{ keep.path }}</td>
+        <td>
+          <ul class="mb-0 ps-3 small text-body-secondary">
+            {% for extra in group|slice:"1:" %}
+            <li>{{ extra.path }} ({{ extra.size|filesizeformat }})</li>
+            {% endfor %}
+          </ul>
+        </td>
+      </tr>
+      {% endwith %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% translate "This cannot be undone. Continue?" as confirm_text %}
+<form method="post">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-danger" onclick="return confirm('{{ confirm_text|escapejs }}');">
+    {% translate "Delete duplicate files" %}
+  </button>
+  <a href="{% url 'library:list' %}" class="btn btn-outline-secondary">{% translate "Cancel" %}</a>
+</form>
+
+{% else %}
+  <p class="text-body-secondary">{% translate "No exact duplicates found." %}</p>
+  <a href="{% url 'library:list' %}" class="btn btn-outline-secondary">{% translate "Back to library" %}</a>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,39 @@
+/* Small additions on top of Bootstrap 5.3's built-in [data-bs-theme] light/dark
+   support (CLAUDE.md #14) — most theming is handled by Bootstrap itself, so
+   there is no separate stylesheet to duplicate or keep in sync. */
+
+.progress {
+  min-width: 8rem;
+}
+
+.track-row .btn {
+  white-space: nowrap;
+}
+
+/* Bootstrap ships no min-width utility. Needed so a flex child with
+   text-truncate actually shrinks instead of overflowing its row
+   (mobile card layouts — CLAUDE.md #13). */
+.min-w-0 {
+  min-width: 0;
+}
+
+/* Reserve room for the fixed player bar (templates/base.html) once a
+   track is playing, on every page, not just the library — it stays
+   mounted and playing across in-app navigation (static/js/player.js). */
+body.player-active #main-content {
+  padding-bottom: 5rem;
+}
+
+/* A cross-fade was tried here for the batch/shared-status pages' polled
+   live updates (#batch-items, #shared-status —
+   templates/downloader/_batch_items.html, templates/sharing/_status.html)
+   to soften the new content abruptly popping in every couple of seconds.
+   Reverted — reproduced for real: it fades the *entire* re-rendered
+   container on every single poll regardless of whether anything in it
+   actually changed, so a batch with many tracks (most of them already
+   finished and never changing) reads as the whole list continuously
+   flickering, which is worse than the abrupt-pop problem it was meant to
+   fix. A real fix would need to only animate the rows that actually
+   changed (DOM diffing/morphing instead of a full outerHTML replace,
+   e.g. htmx's idiomorph extension) rather than a blanket container-level
+   transition — not done here to avoid a new dependency for this. */

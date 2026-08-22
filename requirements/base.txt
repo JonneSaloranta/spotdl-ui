@@ -1,0 +1,19 @@
+Django>=5.0,<5.1
+psycopg[binary]>=3.1,<4.0
+celery>=5.4,<6.0
+redis>=5.0,<6.0
+django-redis>=5.4,<7.0
+python-decouple>=3.8,<4.0
+django-htmx>=1.19,<2.0
+requests>=2.31,<3.0
+mutagen>=1.47,<2.0
+gunicorn>=22.0,<23.0
+
+# Pinned exactly (not a range): CLAUDE.md #4 requires the exact spotDL
+# command syntax be verified against the installed version rather than
+# guessed. apps/downloader/services/spotdl.py was written and tested
+# against this specific version — bump deliberately, re-verify
+# `spotdl --help` / `spotdl download --help` / `spotdl save --help`
+# against the new version, and update docs/SPOTDL_VERIFICATION.md before
+# raising this pin.
+spotdl==4.5.2

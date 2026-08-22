@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load i18n library_extras %}
+
+{% block title %}{% translate "Library" %} — {{ site_settings.site_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h1 class="h4 mb-0">{% translate "Music library" %}</h1>
+  {% if user.is_staff %}
+  <a href="{% url 'library:remove_duplicates' %}" class="btn btn-outline-danger btn-sm">
+    <i class="bi bi-files" aria-hidden="true"></i> {% translate "Remove duplicates" %}
+  </a>
+  {% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-sm-6 col-md-4">
+    <input type="search" name="q" value="{{ query }}" class="form-control"
+           placeholder="{% translate 'Search artist, title, album…' %}" aria-label="{% translate 'Search' %}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-outline-primary">{% translate "Search" %}</button>
+    {% if query %}<a href="{% url 'library:list' %}" class="btn btn-outline-secondary">{% translate "Clear" %}</a>{% endif %}
+  </div>
+</form>
+
+{% if page.object_list %}
+<!-- Mobile-first: a stacked card per track, no horizontal scrolling
+     needed; the table is a progressive enhancement from md up
+     (CLAUDE.md #13), matching the batch-items layout. -->
+<div class="d-md-none">
+  {% for track in page.object_list %}
+  <div class="card mb-2">
+    <div class="card-body py-2 px-3">
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 play-track-btn"
+                data-id="{{ track.pk }}"
+                data-url="{% url 'library:stream' track.pk %}"
+                data-cover-url="{% url 'library:cover' track.pk %}"
+                data-title="{{ track.title|default:track.filename }}"
+                data-artist="{{ track.artist|default:'' }}"
+                aria-pressed="false"
+                aria-label="{% blocktranslate with title=track.title|default:track.filename %}Play {{ title }}{% endblocktranslate %}">
+          <i class="bi bi-play-fill" aria-hidden="true"></i>
+        </button>
+        <span class="d-inline-block flex-shrink-0 rounded overflow-hidden bg-body-secondary text-center"
+              style="width: 2.5rem; height: 2.5rem; line-height: 2.5rem;">
+          <img src="{% url 'library:cover' track.pk %}" alt="" loading="lazy" class="w-100 h-100"
+               style="object-fit: cover;"
+               onerror="this.remove(); this.parentElement.querySelector('i').classList.remove('d-none');">
+          <i class="bi bi-music-note-beamed text-body-secondary d-none" aria-hidden="true"></i>
+        </span>
+        <div class="min-w-0 flex-grow-1">
+          <div class="fw-semibold text-truncate">{{ track.title|default:track.filename }}</div>
+          <div class="text-body-secondary small text-truncate">
+            {{ track.artist|default:"—" }}{% if track.album %} &middot; {{ track.album }}{% endif %}
+          </div>
+        </div>
+        {% if track.sha256 in duplicate_hashes %}
+          <span class="badge text-bg-warning flex-shrink-0"
+                title="{% translate 'Another file with identical content exists' %}"
+                aria-label="{% translate 'Another file with identical content exists' %}">
+            <i class="bi bi-files" aria-hidden="true"></i>
+          </span>
+        {% endif %}
+      </div>
+      <div class="text-body-secondary small mt-1">
+        {% if track.duration %}{{ track.duration|duration_hms }} &middot; {% endif %}{{ track.format|upper }}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="d-none d-md-block table-responsive">
+  <table class="table table-sm align-middle">
+    <thead>
+      <tr>
+        <th></th>
+        <th></th>
+        <th>{% translate "Title" %}</th>
+        <th>{% translate "Artist" %}</th>
+        <th>{% translate "Album" %}</th>
+        <th>{% translate "Duration" %}</th>
+        <th>{% translate "Format" %}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for track in page.object_list %}
+      <tr>
+        <td>
+          <button type="button" class="btn btn-sm btn-outline-primary play-track-btn"
+                  data-id="{{ track.pk }}"
+                  data-url="{% url 'library:stream' track.pk %}"
+                  data-cover-url="{% url 'library:cover' track.pk %}"
+                  data-title="{{ track.title|default:track.filename }}"
+                  data-artist="{{ track.artist|default:'' }}"
+                  aria-pressed="false"
+                  aria-label="{% blocktranslate with title=track.title|default:track.filename %}Play {{ title }}{% endblocktranslate %}">
+            <i class="bi bi-play-fill" aria-hidden="true"></i>
+          </button>
+        </td>
+        <td>
+          <span class="d-inline-block rounded overflow-hidden bg-body-secondary text-center"
+                style="width: 2.5rem; height: 2.5rem; line-height: 2.5rem;">
+            <img src="{% url 'library:cover' track.pk %}" alt="" loading="lazy" class="w-100 h-100"
+                 style="object-fit: cover;"
+                 onerror="this.remove(); this.parentElement.querySelector('i').classList.remove('d-none');">
+            <i class="bi bi-music-note-beamed text-body-secondary d-none" aria-hidden="true"></i>
+          </span>
+        </td>
+        <td>{{ track.title|default:track.filename }}</td>
+        <td>{{ track.artist|default:"—" }}</td>
+        <td>{{ track.album|default:"—" }}</td>
+        <td>{% if track.duration %}{{ track.duration|duration_hms }}{% else %}—{% endif %}</td>
+        <td>{{ track.format|upper }}</td>
+        <td>
+          {% if track.sha256 in duplicate_hashes %}
+            <span class="badge text-bg-warning" title="{% translate 'Another file with identical content exists' %}">
+              <i class="bi bi-files" aria-hidden="true"></i> {% translate "Duplicate" %}
+            </span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page.paginator.num_pages > 1 %}
+<nav aria-label="{% translate 'Library pages' %}">
+  <ul class="pagination">
+    {% if page.has_previous %}
+      <li class="page-item"><a class="page-link" href="?q={{ query }}&page={{ page.previous_page_number }}">{% translate "Previous" %}</a></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">{{ page.number }} / {{ page.paginator.num_pages }}</span></li>
+    {% if page.has_next %}
+      <li class="page-item"><a class="page-link" href="?q={{ query }}&page={{ page.next_page_number }}">{% translate "Next" %}</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+  <p class="text-body-secondary">
+    {% if query %}{% translate "No tracks match your search." %}{% else %}{% translate "The library is empty so far." %}{% endif %}
+  </p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Link unavailable" %} — {{ site_settings.site_name }}{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+  <i class="bi bi-link-45deg display-1 text-body-secondary" aria-hidden="true"></i>
+  <h1 class="h4 mt-3">{% translate "This link is no longer available" %}</h1>
+  <p class="text-body-secondary">
+    {% translate "It may have expired, been disabled, or reached its usage limit." %}
+  </p>
+</div>
+{% endblock %}

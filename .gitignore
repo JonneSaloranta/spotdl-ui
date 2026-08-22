@@ -1,0 +1,28 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+.env
+.env.*
+*.env
+!.env.example
+
+staticfiles/
+media/
+media_data/
+/data/
+# The music library + scratch download space (docker-compose.yml's host
+# bind mount) — real user media, never source code, and potentially large/
+# copyrighted; never belongs in the repo.
+library_data/
+
+db.sqlite3
+*.spotdl
+
+.DS_Store
+*.swp

@@ -1,0 +1,15 @@
+{% load i18n %}<span class="badge text-bg-{% if item.status == 'completed' %}success{% elif item.status == 'failed' %}danger{% elif item.status == 'cancelled' %}secondary{% elif item.status == 'duplicate_skipped' %}warning{% else %}primary{% endif %}">
+  {{ item.get_status_display }}
+</span>
+{% if item.duplicate_status == 'exact_duplicate' %}
+  <span class="badge text-bg-warning" title="{% translate 'Exact duplicate' %}">
+    <i class="bi bi-files" aria-hidden="true"></i> {% translate "Duplicate" %}
+  </span>
+{% elif item.duplicate_status == 'probable_duplicate' %}
+  <span class="badge text-bg-info" title="{% translate 'Probable duplicate' %}">
+    <i class="bi bi-question-diamond" aria-hidden="true"></i> {% translate "Possible duplicate" %}
+  </span>
+{% endif %}
+{% if item.error_message %}
+  <div class="text-danger small">{{ item.error_message }}</div>
+{% endif %}

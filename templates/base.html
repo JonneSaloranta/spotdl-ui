@@ -1,0 +1,276 @@
+{% load i18n static %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+<script>
+/* Resolve and apply the theme before first paint, to avoid a flash of the
+   wrong theme (CLAUDE.md #14). Reads localStorage first (works instantly
+   on repeat visits), falling back to the `theme` cookie the server also
+   sets, then to "auto". */
+(function () {
+  var pref = localStorage.getItem("theme") || "{{ request.COOKIES.theme|default:'auto' }}";
+  function resolve(p) {
+    if (p === "auto") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    return p;
+  }
+  document.documentElement.setAttribute("data-theme-preference", pref);
+  document.documentElement.setAttribute("data-bs-theme", resolve(pref));
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+    if ((localStorage.getItem("theme") || "auto") === "auto") {
+      document.documentElement.setAttribute("data-bs-theme", resolve("auto"));
+    }
+  });
+})();
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#212529">
+<title>{% block title %}{{ site_settings.site_name }}{% endblock %}</title>
+<link rel="manifest" href="{% url 'manifest' %}">
+<link rel="icon" href="{% static 'img/favicon-32.png' %}" sizes="32x32">
+<link rel="apple-touch-icon" href="{% static 'img/icon-192.png' %}">
+<link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+<link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+<link rel="stylesheet" href="{% static 'css/theme.css' %}">
+{% block extra_head %}{% endblock %}
+</head>
+<body class="d-flex flex-column min-vh-100"
+      hx-boost="true" hx-target="#app-shell" hx-select="#app-shell" hx-swap="innerHTML">
+
+<a class="visually-hidden-focusable" href="#main-content">{% translate "Skip to main content" %}</a>
+
+<!-- Everything that should refresh on in-app navigation lives inside
+     #app-shell; the player bar below is deliberately outside it (see the
+     hx-boost attributes on <body>) so an htmx-boosted navigation swaps
+     the nav/page content but never touches — and never interrupts —
+     whatever is currently playing. -->
+<div id="app-shell" class="d-flex flex-column flex-grow-1">
+
+<nav class="navbar navbar-expand-md bg-body-tertiary border-bottom mb-3">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'core:home' %}">
+      <i class="bi bi-music-note-beamed" aria-hidden="true"></i>
+      {{ site_settings.site_name }}
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain"
+            aria-controls="navbarMain" aria-expanded="false" aria-label="{% translate 'Toggle navigation' %}">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarMain">
+      <ul class="navbar-nav me-auto mb-2 mb-md-0">
+        {% if user.is_authenticated %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'core:home' %}">{% translate "Downloads" %}</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'library:list' %}">{% translate "Library" %}</a>
+        </li>
+        {% endif %}
+        {% if user.is_staff %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'core:settings' %}">{% translate "Settings" %}</a>
+        </li>
+        <li class="nav-item">
+          <!-- Django admin is a separate app with its own base template
+               (no #app-shell), so it can't be boosted into this page —
+               it needs a real navigation. -->
+          <a class="nav-link" href="{% url 'admin:index' %}" hx-boost="false">{% translate "Administration" %}</a>
+        </li>
+        {% endif %}
+      </ul>
+
+      <ul class="navbar-nav align-items-md-center gap-md-2">
+        <li class="nav-item dropdown">
+          <button class="btn btn-link nav-link dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"
+                  aria-label="{% translate 'Choose theme' %}">
+            <i class="bi bi-circle-half" aria-hidden="true"></i>
+            {% translate "Theme" %}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><button type="button" class="dropdown-item" onclick="setTheme('light')">
+              <i class="bi bi-sun" aria-hidden="true"></i> {% translate "Light" %}</button></li>
+            <li><button type="button" class="dropdown-item" onclick="setTheme('dark')">
+              <i class="bi bi-moon-stars" aria-hidden="true"></i> {% translate "Dark" %}</button></li>
+            <li><button type="button" class="dropdown-item" onclick="setTheme('auto')">
+              <i class="bi bi-display" aria-hidden="true"></i> {% translate "Automatic" %}</button></li>
+          </ul>
+        </li>
+
+        {% if user.is_staff %}
+        <li class="nav-item dropdown">
+          <button class="btn btn-link nav-link dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"
+                  aria-label="{% translate 'Library sync' %}">
+            <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+            {% translate "Library sync" %}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <form method="post" action="{% url 'library:scan_quick' %}">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item">{% translate "Quick sync" %}</button>
+              </form>
+            </li>
+            <li>
+              <form method="post" action="{% url 'library:scan_full' %}">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item">{% translate "Full sync" %}</button>
+              </form>
+            </li>
+          </ul>
+        </li>
+        {% endif %}
+
+        <li class="nav-item">
+          <form action="{% url 'set_language' %}" method="post" class="d-flex">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <select name="language" class="form-select form-select-sm" onchange="this.form.submit()"
+                    aria-label="{% translate 'Choose language' %}">
+              {% get_current_language as CURRENT_LANGUAGE %}
+              {% get_available_languages as AVAILABLE_LANGUAGES %}
+              {% for code, name in AVAILABLE_LANGUAGES %}
+                <option value="{{ code }}" {% if code == CURRENT_LANGUAGE %}selected{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </li>
+
+        {% if user.is_authenticated %}
+        <li class="nav-item dropdown">
+          <button class="btn btn-link nav-link dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-person-circle" aria-hidden="true"></i> {{ user.username }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">{% translate "Profile" %}</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <form action="{% url 'accounts:logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item">{% translate "Log out" %}</button>
+              </form>
+            </li>
+          </ul>
+        </li>
+        {% else %}
+        <li class="nav-item">
+          <a class="btn btn-primary btn-sm" href="{% url 'accounts:login' %}">{% translate "Log in" %}</a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<main id="main-content" class="container flex-grow-1 pb-5" tabindex="-1">
+  {% block content %}{% endblock %}
+</main>
+
+{% if messages %}
+  <!-- Fixed-position, auto-dismissing toasts rather than inline alerts —
+       reported directly: a message that just sits in the page until
+       manually dismissed is easy to miss or gets in the way. Lives outside
+       the normal document flow (position-fixed) so it never pushes
+       #main-content's own layout around. static/js/toasts.js shows each
+       one and wires up htmx so it also works after a boosted navigation,
+       not just on a full page load. -->
+  <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090" aria-live="polite" aria-atomic="true">
+    {% for message in messages %}
+      <div class="toast align-items-center text-bg-{{ message.tags|default:'info' }} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body">{{ message }}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="{% translate 'Close' %}"></button>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+</div><!-- #app-shell -->
+
+<footer class="border-top py-3 text-body-secondary small">
+  <div class="container d-flex justify-content-between flex-wrap gap-2">
+    <span>{{ site_settings.site_name }}</span>
+    <span>v{{ app_version }}</span>
+  </div>
+</footer>
+
+<!-- Persistent player bar: hidden until the first track is played, then
+     stays put (and playing) across every htmx-boosted navigation because
+     it lives outside #app-shell. See static/js/player.js. Track buttons
+     that start playback (".play-track-btn") are rendered per-page, e.g.
+     templates/library/track_list.html. -->
+<div id="player-bar" class="d-none position-fixed bottom-0 start-0 end-0 bg-body-tertiary border-top shadow-sm py-2"
+     style="z-index: 1030;">
+  <div class="container d-flex align-items-center gap-2 flex-wrap">
+    <img id="player-cover" class="rounded flex-shrink-0 d-none" alt=""
+         style="width: 2.5rem; height: 2.5rem; object-fit: cover;">
+    <button type="button" id="player-prev" class="btn btn-outline-secondary rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center"
+            style="width: 2rem; height: 2rem;" aria-label="{% translate 'Previous track' %}" disabled>
+      <i class="bi bi-skip-start-fill" aria-hidden="true"></i>
+    </button>
+    <button type="button" id="player-toggle" class="btn btn-primary rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center"
+            style="width: 2.5rem; height: 2.5rem;" aria-pressed="false" aria-label="{% translate 'Play or pause' %}">
+      <i class="bi bi-play-fill" aria-hidden="true"></i>
+    </button>
+    <button type="button" id="player-next" class="btn btn-outline-secondary rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center"
+            style="width: 2rem; height: 2rem;" aria-label="{% translate 'Next track' %}" disabled>
+      <i class="bi bi-skip-end-fill" aria-hidden="true"></i>
+    </button>
+    <div class="flex-shrink-0 text-truncate" style="max-width: 12rem;">
+      <div id="player-title" class="fw-semibold text-truncate small"></div>
+      <div id="player-artist" class="text-body-secondary text-truncate small"></div>
+    </div>
+    <span id="player-current-time" class="small text-body-secondary flex-shrink-0">0:00</span>
+    <input type="range" id="player-seek" class="form-range flex-grow-1" min="0" max="0" step="1" value="0"
+           style="min-width: 6rem;" aria-label="{% translate 'Seek' %}">
+    <span id="player-duration" class="small text-body-secondary flex-shrink-0">0:00</span>
+    <i class="bi bi-volume-up-fill flex-shrink-0" aria-hidden="true"></i>
+    <input type="range" id="player-volume" class="form-range flex-shrink-0" min="0" max="1" step="0.01" value="1"
+           style="width: 6rem;" aria-label="{% translate 'Volume' %}">
+  </div>
+</div>
+<audio id="player-audio" preload="none" data-neighbors-url-template="{% url 'library:neighbors' 0 %}"></audio>
+
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
+<script>
+function getCookie(name) {
+  var match = document.cookie.match("(^|;\\s*)" + name + "=([^;]*)");
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+function setTheme(theme) {
+  localStorage.setItem("theme", theme);
+  document.documentElement.setAttribute("data-theme-preference", theme);
+  var resolved = theme === "auto"
+    ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+    : theme;
+  document.documentElement.setAttribute("data-bs-theme", resolved);
+
+  {% if user.is_authenticated %}
+  fetch("{% url 'accounts:set_theme' %}", {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken"),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "theme=" + encodeURIComponent(theme),
+  });
+  {% endif %}
+}
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("{% url 'service_worker' %}").catch(function () {
+      // PWA install/offline shell is a progressive enhancement; a
+      // registration failure must never break the page itself.
+    });
+  });
+}
+</script>
+<script src="{% static 'js/player.js' %}"></script>
+<script src="{% static 'js/toasts.js' %}"></script>
+{% block extra_body %}{% endblock %}
+</body>
+</html>

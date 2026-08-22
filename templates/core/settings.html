@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Settings" %} — {{ site_settings.site_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h1 class="h4 mb-0">{% translate "Site settings" %}</h1>
+      <a href="{% url 'admin:index' %}" class="btn btn-outline-secondary btn-sm" hx-boost="false">
+        <i class="bi bi-gear" aria-hidden="true"></i> {% translate "Full admin panel" %}
+      </a>
+    </div>
+    <p class="text-body-secondary small">
+      {% translate "The most commonly changed settings. For users, shared links, and detailed records, use the full admin panel." %}
+    </p>
+
+    <form method="post" class="card shadow-sm">
+      {% csrf_token %}
+      <div class="card-body">
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="mb-3">
+          <label for="{{ form.site_name.id_for_label }}" class="form-label">{% translate "Site name" %}</label>
+          {{ form.site_name }}
+          {% for error in form.site_name.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+
+        <div class="form-check mb-2">
+          {{ form.maintenance_mode }}
+          <label class="form-check-label" for="{{ form.maintenance_mode.id_for_label }}">
+            {% translate "Maintenance mode" %}
+          </label>
+          <div class="form-text">{% translate "Non-staff users see a maintenance page instead of the app." %}</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="{{ form.maintenance_message.id_for_label }}" class="form-label">
+            {% translate "Maintenance message" %}
+          </label>
+          {{ form.maintenance_message }}
+        </div>
+
+        <hr>
+
+        <div class="mb-3">
+          <label for="{{ form.default_duplicate_policy.id_for_label }}" class="form-label">
+            {% translate "Default duplicate policy" %}
+          </label>
+          {{ form.default_duplicate_policy }}
+          <div class="form-text">{{ form.default_duplicate_policy.help_text }}</div>
+        </div>
+
+        <div class="form-check mb-3">
+          {{ form.auto_replace_probable_duplicates }}
+          <label class="form-check-label" for="{{ form.auto_replace_probable_duplicates.id_for_label }}">
+            {% translate "Automatically replace probable duplicates with a better version" %}
+          </label>
+          <div class="form-text">{{ form.auto_replace_probable_duplicates.help_text }}</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="{{ form.max_urls_per_batch.id_for_label }}" class="form-label">
+            {% translate "Max URLs per batch" %}
+          </label>
+          {{ form.max_urls_per_batch }}
+          {% for error in form.max_urls_per_batch.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+
+        <hr>
+
+        <h2 class="h6">{% translate "Audio provider" %}</h2>
+        <p class="text-body-secondary small">
+          {% translate "YouTube's anti-bot blocking varies by deployment and can change over time — if downloads are failing, try fewer primary attempts and/or a fallback provider. See docs/TROUBLESHOOTING.md." %}
+        </p>
+
+        <div class="mb-3">
+          <label for="{{ form.primary_audio_provider.id_for_label }}" class="form-label">
+            {% translate "Primary provider" %}
+          </label>
+          {{ form.primary_audio_provider }}
+        </div>
+
+        <div class="mb-3">
+          <label for="{{ form.primary_provider_attempts.id_for_label }}" class="form-label">
+            {% translate "Primary provider attempts" %}
+          </label>
+          {{ form.primary_provider_attempts }}
+          <div class="form-text">
+            {% translate "How many attempts stay on the primary provider before switching to the fallback below." %}
+          </div>
+          {% for error in form.primary_provider_attempts.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">{{ form.fallback_audio_providers.label }}</label>
+          {% for checkbox in form.fallback_audio_providers %}
+            <div class="form-check">
+              {{ checkbox.tag }}
+              <label class="form-check-label" for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
+            </div>
+          {% endfor %}
+          <div class="form-text">{{ form.fallback_audio_providers.help_text }}</div>
+        </div>
+
+        <hr>
+
+        <div class="form-check mb-3">
+          {{ form.musicbrainz_enabled }}
+          <label class="form-check-label" for="{{ form.musicbrainz_enabled.id_for_label }}">
+            {% translate "MusicBrainz enabled" %}
+          </label>
+          <div class="form-text">{{ form.musicbrainz_enabled.help_text }}</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="{{ form.musicbrainz_sweep_batch_size.id_for_label }}" class="form-label">
+            {% translate "MusicBrainz background sweep batch size" %}
+          </label>
+          {{ form.musicbrainz_sweep_batch_size }}
+          <div class="form-text">{{ form.musicbrainz_sweep_batch_size.help_text }}</div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">{% translate "Save" %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

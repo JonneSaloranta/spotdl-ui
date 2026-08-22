@@ -1,0 +1,30 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div id="content-main">
+  <p>
+    <a href="{% url 'admin:sharing_sharedimportlink_changelist' %}">&larr; {% translate "Shared import links" %}</a>
+  </p>
+  <p class="help">
+    {% translate "The link lets anyone who has it import this one playlist/album/track without an account — they never see or choose a different URL." %}
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<p class="errornote">{{ form.non_field_errors }}</p>{% endif %}
+    <fieldset class="module aligned">
+      {% for field in form %}
+      <div class="form-row{% if field.errors %} errors{% endif %}">
+        {{ field.errors }}
+        {{ field.label_tag }}
+        {{ field }}
+        {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </fieldset>
+    <div class="submit-row">
+      <input type="submit" value="{% translate 'Create link' %}" class="default">
+    </div>
+  </form>
+</div>
+{% endblock %}

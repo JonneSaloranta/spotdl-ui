@@ -1,0 +1,30 @@
+name: Release
+
+# Version + CHANGELOG.md, driven entirely by Conventional Commits
+# (https://www.conventionalcommits.org/) on master: `fix:` -> patch,
+# `feat:` -> minor, a `!` or a `BREAKING CHANGE:` footer -> major. Anything
+# else (docs:, chore:, ci:, refactor:, test:, ...) is recorded in the
+# changelog but doesn't bump the version on its own.
+#
+# release-please works in two steps, both handled by this one action:
+#   1. On a qualifying push to master, it opens/updates a "release PR"
+#      containing the version bump (VERSION file + .release-please-manifest.json)
+#      and the CHANGELOG.md entry, for review before anything is tagged.
+#   2. Once that PR is merged, the *next* run (triggered by that merge, still
+#      a push to master) detects it and creates the actual git tag + GitHub
+#      Release. Nothing is tagged/released without that PR being merged.
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          target-branch: master

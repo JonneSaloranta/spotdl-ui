@@ -1,0 +1,14 @@
+{% load i18n %}{% autoescape off %}{% blocktranslate with title=batch.title|default:batch %}Hi {{ user }},
+
+Your download batch "{{ title }}" has finished.{% endblocktranslate %}
+
+{% translate "Status:" %} {{ batch.get_status_display }}
+{% translate "Completed:" %} {{ batch.completed_items }} / {{ batch.total_items }}
+{% if batch.failed_items %}{% translate "Failed:" %} {{ batch.failed_items }}
+{% endif %}{% if batch.cancelled_items %}{% translate "Cancelled:" %} {{ batch.cancelled_items }}
+{% endif %}
+{% if batch.error_summary %}{% translate "Errors:" %}
+{{ batch.error_summary }}
+{% endif %}
+{% translate "You can review it in the app." %}
+{% endautoescape %}

@@ -1,0 +1,30 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div id="content-main">
+  <p class="errornote" style="background: #efe; border-color: #cec; color: #094;">
+    {% translate "This is the only time the full link will be shown — only a hash of it is stored, so copy it now. If it's lost, disable this link and create a new one." %}
+  </p>
+  <div class="module aligned">
+    <div class="form-row">
+      <div>
+        <label>{% translate "Shareable link" %}</label>
+        <input type="text" readonly value="{{ share_url }}" style="width: 100%;" onclick="this.select();">
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>{% translate "Expires" %}</label><p>{{ link.expires_at }}</p></div>
+    </div>
+    <div class="form-row">
+      <div><label>{% translate "Maximum uses" %}</label><p>{{ link.maximum_uses }}</p></div>
+    </div>
+    <div class="form-row">
+      <div><label>{% translate "Maximum URLs per submission" %}</label><p>{{ link.max_items_per_submission }}</p></div>
+    </div>
+  </div>
+  <p>
+    <a href="{% url 'admin:sharing_sharedimportlink_changelist' %}">&larr; {% translate "Shared import links" %}</a>
+  </p>
+</div>
+{% endblock %}

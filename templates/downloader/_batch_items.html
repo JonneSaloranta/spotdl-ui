@@ -1,0 +1,110 @@
+{% load i18n %}
+<div id="batch-items"
+     {% if not batch.is_finished %}hx-get="{% url 'downloader:batch_status' batch.pk %}"
+     hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}
+     {# base.html sets hx-select/hx-target="#app-shell" on <body> so boosted #}
+     {# links/forms swap only the app shell and leave the player alone. That #}
+     {# would otherwise also apply to this element's own poll above: its #}
+     {# response is a small fragment (just this partial) with no #app-shell #}
+     {# in it, so an inherited hx-select would find nothing and wipe the #}
+     {# whole page down to the footer. "unset" cancels the inherited value #}
+     {# for this poll (and, since inheritance walks down, for the #}
+     {# retry/cancel forms nested inside it too) — see #}
+     {# _item_actions.html, which explicitly restores it for those. #}
+     hx-select="unset" hx-target="unset">
+
+  <!-- Only this summary line is a live region, not the whole polled
+       container below: announcing the entire item list on every 3s poll
+       (even when nothing actually changed) would be constant, unwanted
+       chatter for screen reader users. This line is short and only its
+       text content changes meaningfully between polls. -->
+  <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1"
+       aria-live="polite" aria-atomic="true">
+    <span class="badge text-bg-{% if batch.status == 'completed' %}success{% elif batch.status == 'failed' %}danger{% elif batch.status == 'cancelled' %}secondary{% else %}primary{% endif %}">
+      {{ batch.get_status_display }}
+    </span>
+    <span class="text-body-secondary small">
+      {{ batch.completed_items }} {% translate "completed" %}
+      &middot; {{ batch.failed_items }} {% translate "failed" %}
+      &middot; {{ batch.cancelled_items }} {% translate "cancelled" %}
+      &middot; {{ batch.total_items }} {% translate "total" %}
+    </span>
+  </div>
+
+  {% if batch.error_summary %}
+    <div class="alert alert-warning small">
+      <pre class="mb-0 text-wrap">{{ batch.error_summary }}</pre>
+    </div>
+  {% endif %}
+
+  {% if batch.items.exists %}
+  <!-- Mobile-first: a stacked card per track is the primary layout — it
+       needs no horizontal scrolling and keeps status/progress/actions
+       readable at phone width. The table below is a progressive
+       enhancement shown only from the md breakpoint up, where the extra
+       columns fit comfortably (CLAUDE.md #13). -->
+  <div class="d-md-none">
+    {% for item in batch.items.all %}
+    <div class="card mb-2 track-row">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="min-w-0">
+            <div class="fw-semibold text-truncate">{{ item.title|default:"—" }}</div>
+            <div class="text-body-secondary small text-truncate">{{ item.artist|default:"—" }}</div>
+          </div>
+          {% include "downloader/_item_actions.html" %}
+        </div>
+        <div class="mt-2">
+          {% include "downloader/_item_status_badges.html" %}
+        </div>
+        <div class="progress mt-2" role="progressbar" aria-valuenow="{{ item.progress }}" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-bar" style="width: {{ item.progress }}%">{{ item.progress }}%</div>
+        </div>
+        {% if item.current_stage %}<div class="small text-body-secondary mt-1">{{ item.current_stage }}</div>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="d-none d-md-block table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th scope="col">{% translate "Title" %}</th>
+          <th scope="col">{% translate "Artist" %}</th>
+          <th scope="col">{% translate "Status" %}</th>
+          <th scope="col">{% translate "Progress" %}</th>
+          <th scope="col"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in batch.items.all %}
+        <tr class="track-row">
+          <td>{{ item.title|default:"—" }}</td>
+          <td>{{ item.artist|default:"—" }}</td>
+          <td>{% include "downloader/_item_status_badges.html" %}</td>
+          <td style="min-width: 8rem;">
+            <div class="progress" role="progressbar" aria-valuenow="{{ item.progress }}" aria-valuemin="0" aria-valuemax="100">
+              <div class="progress-bar" style="width: {{ item.progress }}%">{{ item.progress }}%</div>
+            </div>
+            {% if item.current_stage %}<div class="small text-body-secondary">{{ item.current_stage }}</div>{% endif %}
+          </td>
+          <td class="text-end">{% include "downloader/_item_actions.html" %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% elif batch.is_finished %}
+    <!-- Reproduced for real: a batch that failed to resolve at all (e.g. every
+         source timed out) has zero items *and* is finished — without this branch
+         it fell through to the "still resolving" spinner below forever, right
+         next to the error alert above that already says it failed. -->
+    <p class="text-body-secondary">{% translate "No tracks were found for this import." %}</p>
+  {% else %}
+    <p class="text-body-secondary d-flex align-items-center gap-2">
+      <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+      {% translate "Resolving sources…" %}
+    </p>
+  {% endif %}
+</div>

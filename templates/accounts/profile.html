@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Profile" %} — {{ site_settings.site_name }}{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">{% translate "Profile" %}</h1>
+<dl class="row">
+  <dt class="col-sm-3">{% translate "Username" %}</dt>
+  <dd class="col-sm-9">{{ user.username }}</dd>
+  <dt class="col-sm-3">{% translate "Email" %}</dt>
+  <dd class="col-sm-9">{{ user.email|default:"—" }}</dd>
+  <dt class="col-sm-3">{% translate "Theme preference" %}</dt>
+  <dd class="col-sm-9">{{ profile.get_theme_preference_display }}</dd>
+  <dt class="col-sm-3">{% translate "Preferred language" %}</dt>
+  <dd class="col-sm-9">{{ profile.get_preferred_language_display|default:_("Site default") }}</dd>
+</dl>
+{% endblock %}

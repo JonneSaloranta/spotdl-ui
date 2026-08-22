@@ -1,0 +1,122 @@
+{% load i18n library_extras %}
+<div id="shared-status"
+     hx-get="{% url 'sharing:status' token %}"
+     hx-trigger="every 5s" hx-swap="outerHTML"
+     {# See templates/downloader/_batch_items.html for why this poll needs #}
+     {# to opt out of the hx-select/hx-target base.html sets on <body>: #}
+     {# this response is a small fragment with no #app-shell in it, so an #}
+     {# inherited hx-select would find nothing and wipe the whole page. #}
+     hx-select="unset" hx-target="unset">
+
+  <h2 class="h6 mt-4">{% translate "Download status" %}</h2>
+  {% if items %}
+    <div class="d-md-none">
+      {% for item in items %}
+      <div class="card mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="fw-semibold text-truncate">{{ item.title|default:"—" }}</div>
+          <div class="text-body-secondary small text-truncate">{{ item.artist|default:"—" }}</div>
+          <div class="mt-1">{% include "downloader/_item_status_badges.html" %}</div>
+          <div class="progress mt-2" role="progressbar" aria-valuenow="{{ item.progress }}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar" style="width: {{ item.progress }}%">{{ item.progress }}%</div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="d-none d-md-block table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>{% translate "Title" %}</th>
+            <th>{% translate "Artist" %}</th>
+            <th>{% translate "Status" %}</th>
+            <th>{% translate "Progress" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>{{ item.title|default:"—" }}</td>
+            <td>{{ item.artist|default:"—" }}</td>
+            <td>{% include "downloader/_item_status_badges.html" %}</td>
+            <td style="min-width: 8rem;">
+              <div class="progress" role="progressbar" aria-valuenow="{{ item.progress }}" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: {{ item.progress }}%">{{ item.progress }}%</div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-body-secondary">{% translate "Nothing submitted yet." %}</p>
+  {% endif %}
+
+  <h2 class="h6 mt-4">{% translate "Downloaded music" %}</h2>
+  {% if tracks %}
+    <div class="d-md-none">
+      {% for track in tracks %}
+      <div class="card mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-primary play-track-btn"
+                    data-id="{{ track.pk }}"
+                    data-url="{% url 'sharing:track_stream' token track.pk %}"
+                    data-cover-url="{% url 'sharing:track_cover' token track.pk %}"
+                    data-title="{{ track.title|default:track.filename }}"
+                    data-artist="{{ track.artist|default:'' }}"
+                    aria-pressed="false"
+                    aria-label="{% blocktranslate with title=track.title|default:track.filename %}Play {{ title }}{% endblocktranslate %}">
+              <i class="bi bi-play-fill" aria-hidden="true"></i>
+            </button>
+            <div class="min-w-0 flex-grow-1">
+              <div class="fw-semibold text-truncate">{{ track.title|default:track.filename }}</div>
+              <div class="text-body-secondary small text-truncate">{{ track.artist|default:"—" }}</div>
+            </div>
+            <div class="text-body-secondary small flex-shrink-0">
+              {% if track.duration %}{{ track.duration|duration_hms }}{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="d-none d-md-block table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th></th>
+            <th>{% translate "Title" %}</th>
+            <th>{% translate "Artist" %}</th>
+            <th>{% translate "Duration" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for track in tracks %}
+          <tr>
+            <td>
+              <button type="button" class="btn btn-sm btn-outline-primary play-track-btn"
+                      data-id="{{ track.pk }}"
+                      data-url="{% url 'sharing:track_stream' token track.pk %}"
+                      data-cover-url="{% url 'sharing:track_cover' token track.pk %}"
+                      data-title="{{ track.title|default:track.filename }}"
+                      data-artist="{{ track.artist|default:'' }}"
+                      aria-pressed="false"
+                      aria-label="{% blocktranslate with title=track.title|default:track.filename %}Play {{ title }}{% endblocktranslate %}">
+                <i class="bi bi-play-fill" aria-hidden="true"></i>
+              </button>
+            </td>
+            <td>{{ track.title|default:track.filename }}</td>
+            <td>{{ track.artist|default:"—" }}</td>
+            <td>{% if track.duration %}{{ track.duration|duration_hms }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-body-secondary">{% translate "Nothing downloaded yet." %}</p>
+  {% endif %}
+</div>

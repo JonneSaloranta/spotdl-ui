@@ -1,0 +1,1 @@
+{% load i18n %}{% autoescape off %}{% if is_failure %}{% blocktranslate %}Your download batch needs attention{% endblocktranslate %}{% else %}{% blocktranslate %}Your download batch finished{% endblocktranslate %}{% endif %}{% endautoescape %}

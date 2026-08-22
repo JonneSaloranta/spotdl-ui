@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Maintenance" %} — {{ site_settings.site_name }}{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+  <i class="bi bi-tools display-1 text-body-secondary" aria-hidden="true"></i>
+  <h1 class="h3 mt-3">{% translate "Down for maintenance" %}</h1>
+  <p class="text-body-secondary">
+    {{ message|default:_("The site is temporarily unavailable. Please check back soon.") }}
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "MusicBrainz metadata" %} — {{ track_file.title }}{% endblock %}
+
+{% block content %}
+<h1 class="h4">{% translate "Review metadata against MusicBrainz" %}</h1>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h6">{% translate "Current metadata" %}</h2>
+    <dl class="row mb-0">
+      <dt class="col-sm-2">{% translate "Title" %}</dt><dd class="col-sm-10">{{ track_file.title|default:"—" }}</dd>
+      <dt class="col-sm-2">{% translate "Artist" %}</dt><dd class="col-sm-10">{{ track_file.artist|default:"—" }}</dd>
+      <dt class="col-sm-2">{% translate "Album" %}</dt><dd class="col-sm-10">{{ track_file.album|default:"—" }}</dd>
+    </dl>
+  </div>
+</div>
+
+<form method="post" class="row g-2 mb-4">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="search">
+  <div class="col-sm-4">
+    <label class="form-label">{% translate "Title" %}</label>
+    <input type="text" name="title" value="{{ search_title }}" class="form-control">
+  </div>
+  <div class="col-sm-4">
+    <label class="form-label">{% translate "Artist" %}</label>
+    <input type="text" name="artist" value="{{ search_artist }}" class="form-control">
+  </div>
+  <div class="col-sm-4">
+    <label class="form-label">{% translate "Album" %}</label>
+    <input type="text" name="album" value="{{ search_album }}" class="form-control">
+  </div>
+  <div class="col-12">
+    <button type="submit" class="btn btn-primary">{% translate "Search MusicBrainz" %}</button>
+  </div>
+</form>
+
+{% if candidates is not None %}
+  <h2 class="h6">{% translate "Candidates" %}</h2>
+  {% if candidates %}
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>{% translate "Title" %}</th>
+            <th>{% translate "Artist" %}</th>
+            <th>{% translate "Release" %}</th>
+            <th>{% translate "Score" %}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for candidate in candidates %}
+          <tr>
+            <td>{{ candidate.title }}</td>
+            <td>{{ candidate.artist }}</td>
+            <td>{{ candidate.release }}</td>
+            <td>{{ candidate.score }}</td>
+            <td>
+              <a class="btn btn-sm btn-outline-primary"
+                 href="{% url 'musicbrainz:preview' track_file.pk candidate.mbid %}">
+                {% translate "Preview" %}
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-body-secondary">{% translate "No candidates found." %}</p>
+  {% endif %}
+{% endif %}
+{% endblock %}

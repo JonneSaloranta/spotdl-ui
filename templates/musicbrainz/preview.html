@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Preview metadata change" %}{% endblock %}
+
+{% block content %}
+<h1 class="h4">{% translate "Preview proposed changes" %}</h1>
+
+{% if diff %}
+  <div class="table-responsive mb-3">
+    <table class="table table-sm">
+      <thead><tr><th>{% translate "Field" %}</th><th>{% translate "Current" %}</th><th>{% translate "Proposed" %}</th></tr></thead>
+      <tbody>
+        {% for field, values in diff.items %}
+        <tr>
+          <td>{{ field }}</td>
+          <td>{{ values.current|default:"—" }}</td>
+          <td class="table-success">{{ values.proposed|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form method="post" action="{% url 'musicbrainz:apply' track_file.pk recording.mbid %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-success">{% translate "Apply these changes" %}</button>
+    <a href="{% url 'musicbrainz:review' track_file.pk %}" class="btn btn-outline-secondary">{% translate "Cancel" %}</a>
+  </form>
+{% else %}
+  <p class="text-body-secondary">{% translate "This candidate matches the current metadata exactly — nothing to change." %}</p>
+  <a href="{% url 'musicbrainz:review' track_file.pk %}" class="btn btn-outline-secondary">{% translate "Back" %}</a>
+{% endif %}
+{% endblock %}

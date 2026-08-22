@@ -1,0 +1,13 @@
+{% load i18n %}{% if item.status == 'failed' %}
+<form method="post" action="{% url 'downloader:item_retry' item.pk %}" class="d-inline"
+      hx-target="#app-shell" hx-select="#app-shell">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-sm btn-outline-primary">{% translate "Retry" %}</button>
+</form>
+{% elif item.status == 'pending' or item.status == 'queued' or item.status == 'downloading' or item.status == 'processing' %}
+<form method="post" action="{% url 'downloader:item_cancel' item.pk %}" class="d-inline"
+      hx-target="#app-shell" hx-select="#app-shell">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-sm btn-outline-secondary">{% translate "Cancel" %}</button>
+</form>
+{% endif %}

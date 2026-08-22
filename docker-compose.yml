@@ -1,0 +1,156 @@
+x-app-image: &app-image
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: spotdl-ui:latest
+  env_file:
+    - .env
+  environment:
+    POSTGRES_HOST: db
+    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: redis://redis:6379/0
+    CELERY_RESULT_BACKEND: redis://redis:6379/1
+  volumes:
+    # MUSIC_ROOT (/data/music) and DOWNLOAD_TEMP_ROOT (/data/downloads) are
+    # deliberately subdirectories of one shared mount, not two separate
+    # ones: finalizing a download moves the file from the temp root into
+    # the library with a single atomic rename (CLAUDE.md #21), which only
+    # works within one filesystem. Two separate mounts are usually two
+    # filesystems, which broke that rename in production with
+    # `OSError: [Errno 18] Invalid cross-device link` — see
+    # apps/library/services.py's _atomic_move() for the belt-and-suspenders
+    # fallback, and docs/TROUBLESHOOTING.md.
+    #
+    # A host bind mount (./library_data), not a Docker-managed named
+    # volume: MUSIC_ROOT specifically needs to be a folder an admin can
+    # actually browse/drop files into directly for the library scan
+    # feature (apps.library.services.scan_music_library(),
+    # docs/ADMIN_GUIDE.md's "Library scan") to have any real files to
+    # find — an opaque named volume only reachable through
+    # docker exec/docker cp defeats that. ./library_data/music is where
+    # to put a manually-added track; ./library_data/downloads is
+    # scratch space, never put anything there on purpose.
+    - ./library_data:/data
+    - static_data:/data/static
+    - ./media_data:/data/media
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-spotdl_ui}
+      POSTGRES_USER: ${POSTGRES_USER:-spotdl_ui}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-spotdl_ui} -d ${POSTGRES_DB:-spotdl_ui}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    <<: *app-image
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      RUN_MIGRATIONS: "true"
+      COLLECT_STATIC: "true"
+      SCAN_LIBRARY_ON_STARTUP: "true"
+    command: ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+    healthcheck:
+      # 127.0.0.1, not localhost — see the nginx healthcheck comment below
+      # for why (this has worked so far, but avoid relying on resolver
+      # address-family preference here too).
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    <<: *app-image
+    restart: unless-stopped
+    command: ["celery", "-A", "config", "worker", "--loglevel=info", "--concurrency=${DOWNLOAD_CONCURRENCY:-2}"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME --timeout 5 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  beat:
+    <<: *app-image
+    restart: unless-stopped
+    command: ["celery", "-A", "config", "beat", "--loglevel=info"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-8000}:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_data:/data/static:ro
+      - ./media_data:/data/media:ro
+      # Only /data/music is actually reachable (the "internal"
+      # /protected-music/ location in nginx.conf) — /data/downloads sits
+      # right next to it on the same library_data volume but has no
+      # location pointing at it, so it stays unreachable over HTTP either
+      # way (CLAUDE.md #21).
+      - ./library_data:/data:ro
+    healthcheck:
+      # 127.0.0.1, not localhost: this image's musl resolver prefers the
+      # ::1 (IPv6) entry for "localhost", but nginx here only binds IPv4,
+      # so wget would get "connection refused" and the healthcheck would
+      # never pass despite nginx actually serving fine.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_data:
+  #library_data:
+  #media_data:
