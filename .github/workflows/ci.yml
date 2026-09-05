@@ -75,6 +75,13 @@ jobs:
       - run: pip install -r requirements/dev.txt
       - run: mkdir -p .ci-data/music .ci-data/downloads .ci-data/static .ci-data/media
       - run: python manage.py migrate --noinput
+      # DJANGO_DEBUG=false above (deliberately, to test production settings)
+      # means ManifestStaticFilesStorage is active (config/settings/base.py),
+      # which requires collectstatic to have run first — mirrors
+      # COLLECT_STATIC=true in docker/entrypoint.sh for the real `web`
+      # service. Without this, any template using {% static %} raises
+      # ValueError: Missing staticfiles manifest entry.
+      - run: python manage.py collectstatic --noinput
       - run: pytest
       - uses: actions/upload-artifact@v4
         if: always()
